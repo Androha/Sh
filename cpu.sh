@@ -14,25 +14,17 @@ do
     -l) list+="$2 " # Get source from a list
         shift;;
     -n) names=true;; # Use process names instead of PIDs
-    --req) req="$2" # Required amount of memory
+    --req) req="$2" # Required amount of CPU
            shift;;
     *) echo "$1 is not an option";;
   esac
   shift
 done
 
-mul=$(echo "$req" | sed 's/[^a-zA-Z]*//g') # Getting symbolic multiplyer
-req=$(echo "$req" | sed 's/[^0-9.]*//g') # Getting numeric value of required amount
+req=$(echo "$req" | sed 's/[^0-9.]*//g')
 
-if [ "$req" != "" ]
+if [[ $req -lt 100 && $req != "" ]]
 then
-  case "$mul" in
-    M) req=$(echo "$req*1000" | bc) # Megabytes
-       req=$(echo "($req+0.5)/1" | bc);;
-    G) req=$(echo "$req*1000000" | bc) # Gigabytes
-       req=$(echo "($req+0.5)/1" | bc);;
-    *) req=$(echo "($req+0.5)/1" | bc);; # Ignore other multiplyers
-  esac
 
   if [ -f "$file" ] # Add file contents to the list of processes
   then
@@ -48,8 +40,8 @@ then
     for prc in $list
     do
       #Workfield
-      free=$(cat /proc/meminfo | grep MemFree | grep -Eo '[0-9]+' | tail -n 1)
-      if [[ $all == "false" && $free -gt $req ]]; then echo "Requirements are met"; exit 0; fi # Break if there is enough memory and
+      free=$(( $(echo "(100-$(top -b -n2 -p 1 | fgrep "Cpu(s)" | tail -1 | awk -F'id,' -v prefix="$prefix" '{ split($1, vs, ","); v=vs[length(vs)]; sub("%", "", v); printf "%s%.1f%%\n", prefix, 100 - v }' | cut -d% -f1)+0.5)/1" | bc) ))
+      if [[ $all == "false" && $free -gt $req ]]; then echo "Requirements are met"; exit 0; fi # Break if there is enough CPU and
       if [[ $names == "false" ]]                                                             # you don't need to kill all processes
       then
         kill $prc # Option for PIDs
